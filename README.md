@@ -1,6 +1,6 @@
 # K6ResultComparer
 
-This program was developed as part of my final thesis project during my studies in .NET development. 
+This program was developed as part of my final thesis project during my studies in .NET development at Teknikhögskolan Gothenburg, Sweden. 
 
 ## About the Project
 
@@ -10,20 +10,14 @@ The purpose of this tool is to compare performance test results between two host
 
 Performance tests were conducted using [K6](https://k6.io/), an open source load testing tool by Grafana Labs. Each test scenario targets one of the two hosting solutions and measures key metrics like request duration, failure rate, and throughput.
 
-## Test Scenarios
+## How to use
 
-The following types of tests were included:
-- **Baseline Test** – standard performance measurement
-- **Load Test** – simulating regular traffic
-- **Stress Test** – traffic exceeding system capacity
-- **Spike Test** – sudden surge in traffic
-- **Soak Test** – sustained load over time
+**K6Parser** handles the loading of the raw data from the K6 tests, and then parses the data from txt format to csv format.
 
-Each test was run twice — first on an empty site, then after adding content — to ensure fair and meaningful comparison.
+When the conversion is complete, **K6Visualizer** handles the loading of the csv files and then compares and visualizes the results.
+The comparison is presented directly in the terminal window and the visualized graphs are created and saved in the **K6Plots**-folder.
 
-## Implementation
-
-The results are parsed and visualized using C# in a terminal-based application built with .NET. The application generates CSV files and performance charts for further analysis.
+All raw data can be found in the **Azure With/Without Content** and **Umbraco With/Without Content folders**.
 
 ## Thesis
 
