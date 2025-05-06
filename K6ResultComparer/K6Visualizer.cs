@@ -422,37 +422,43 @@ namespace K6ResultAnalyzer
             return results;
         }
 
-        // Generates and saves a bar plot using ScottPlot 5 API
         public static void GenerateBarPlot(
             List<K6Result> data,
             string metricName,
-            Func<K6Result, double?> valueSelector, // Function to extract the numeric value
-            List<string> sources, // Ensure consistent order
+            Func<K6Result, double?> valueSelector,
+            List<string> sources,
             string title,
             string yLabel,
             string filePath)
         {
-            var plot = new Plot(); // ScottPlot 5: Constructor is parameterless
+            var plot = new Plot();
 
-            var barValues = new List<double>();
-            var barPositions = new List<double>();
-            var labels = new List<Tick>(); // Ticks for custom labels
+            var labels = new List<Tick>();
             bool dataFound = false;
 
-            // Prepare data for the bar plot
+            // List to track bar data by category (e.g. Azure, Umbraco)
+            var azurePositions = new List<double>();
+            var azureValues = new List<double>();
+
+            var umbracoPositions = new List<double>();
+            var umbracoValues = new List<double>();
+
+            var fallbackPositions = new List<double>();
+            var fallbackValues = new List<double>();
+
             for (int i = 0; i < sources.Count; i++)
             {
                 var source = sources[i];
                 var metricData = data.FirstOrDefault(r => r.Source == source && r.Metric == metricName);
                 double? value = metricData != null ? valueSelector(metricData) : null;
 
-                double barValue = 0; // Default to 0 if no data
-                string labelText = $"{source} (N/A)"; // Default label
+                double barValue = 0;
+                string labelText = $"{source} (N/A)";
 
                 if (value.HasValue)
                 {
                     barValue = value.Value;
-                    labelText = source; // Use source name as label
+                    labelText = source;
                     dataFound = true;
                 }
                 else
@@ -460,11 +466,24 @@ namespace K6ResultAnalyzer
                     Console.WriteLine($"Warning: No data found for Metric='{metricName}', Source='{source}' in plot '{title}'");
                 }
 
-                barPositions.Add(i); // X position for this bar
-                barValues.Add(barValue); // Y value for this bar
-
-                // Create a corresponding tick label
                 labels.Add(new Tick(i, labelText));
+
+                // Add to corresponding color group
+                if (source.Contains("Azure", StringComparison.OrdinalIgnoreCase))
+                {
+                    azurePositions.Add(i);
+                    azureValues.Add(barValue);
+                }
+                else if (source.Contains("Umbraco", StringComparison.OrdinalIgnoreCase))
+                {
+                    umbracoPositions.Add(i);
+                    umbracoValues.Add(barValue);
+                }
+                else
+                {
+                    fallbackPositions.Add(i);
+                    fallbackValues.Add(barValue);
+                }
             }
 
             if (!dataFound)
@@ -473,39 +492,48 @@ namespace K6ResultAnalyzer
                 return;
             }
 
-            // Add the bars to the plot
-            // The Add.Bars method creates a BarPlot object representing the series
-            var barPlot = plot.Add.Bars(barPositions.ToArray(), barValues.ToArray());
+            // Add separate bar series for each group
+            if (azurePositions.Count > 0)
+            {
+                var azureBars = plot.Add.Bars(azurePositions.ToArray(), azureValues.ToArray());
+                azureBars.Color = Colors.CornflowerBlue;
+                azureBars.ValueLabelStyle.OffsetY = -5;
+                azureBars.ValueLabelStyle.Bold = true;
+                azureBars.ValueLabelStyle.ForeColor = Colors.Black;
+            }
 
-            // Style the bars (optional, but good for clarity)
-            barPlot.Color = Colors.CornflowerBlue; // Set a base color
-                                                   // If you want different colors per bar, you might need a different approach
-                                                   // or access the plot's palette more directly if Add.Bars doesn't cycle automatically.
-                                                   // For now, using one color. You can create multiple BarPlot objects if needed.
+            if (umbracoPositions.Count > 0)
+            {
+                var umbracoBars = plot.Add.Bars(umbracoPositions.ToArray(), umbracoValues.ToArray());
+                umbracoBars.Color = Color.FromHex("#2A4B8D"); // mörkare blå
+                umbracoBars.ValueLabelStyle.OffsetY = -5;
+                umbracoBars.ValueLabelStyle.Bold = true;
+                umbracoBars.ValueLabelStyle.ForeColor = Colors.Black;
+            }
 
-            // Style the labels above the bars
-            //barPlot.ValueLabelStyle.Visible = true; // Corrected typo: Visible
-            //barPlot.ValueLabelStyle.Format = "{0:F2}"; // Format the value labels (e.g., 2 decimal places)
-            barPlot.ValueLabelStyle.OffsetY = -5; // Adjust label position slightly if needed
-            barPlot.ValueLabelStyle.Bold = true;
-            barPlot.ValueLabelStyle.ForeColor = Colors.Black;
+            if (fallbackPositions.Count > 0)
+            {
+                var fallbackBars = plot.Add.Bars(fallbackPositions.ToArray(), fallbackValues.ToArray());
+                fallbackBars.Color = Colors.Gray;
+                fallbackBars.ValueLabelStyle.OffsetY = -5;
+                fallbackBars.ValueLabelStyle.Bold = true;
+                fallbackBars.ValueLabelStyle.ForeColor = Colors.Black;
+            }
 
+            // X-etiketter
+            plot.Axes.Bottom.TickGenerator = new NumericManual(labels.ToArray());
+            plot.Axes.Bottom.TickLabelStyle.Rotation = 0;
+            plot.Axes.Bottom.TickLabelStyle.Alignment = Alignment.LowerCenter;
 
-            // Customize axes and title using ScottPlot 5 API
-            plot.Axes.Bottom.TickGenerator = new NumericManual(labels.ToArray()); // Set custom labels for X-axis ticks
-            plot.Axes.Bottom.TickLabelStyle.Rotation = 45; // Rotate labels if they overlap
-            plot.Axes.Bottom.Label.Text = "Source (PaaS Provider)"; // Set X-axis label
-            plot.Axes.Left.Label.Text = yLabel; // Set Y-axis label
-            plot.Axes.Title.Label.Text = title; // Set Plot title
+            plot.Axes.Bottom.Label.Text = "Source (PaaS Provider)";
+            plot.Axes.Left.Label.Text = yLabel;
+            plot.Axes.Title.Label.Text = title;
 
-            // Adjust layout slightly if needed
-            plot.Axes.AutoScale(); // Ensure axes fit the data
+            plot.Axes.AutoScale();
 
-            // Save the plot using ScottPlot 5 API
             try
             {
-                // Set explicit size before saving
-                plot.Save(filePath, 800, 600); // Increased size slightly for better label visibility
+                plot.Save(filePath, 800, 600);
                 Console.WriteLine($"  - Saved plot: {Path.GetFileName(filePath)}");
             }
             catch (Exception ex)
@@ -513,9 +541,8 @@ namespace K6ResultAnalyzer
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error saving plot '{filePath}': {ex.Message}");
                 Console.ResetColor();
-                // ScottPlot might throw if rendering context is unavailable (e.g., some server environments)
-                // Or if the file path is invalid/inaccessible.
             }
         }
+
     }
 }
