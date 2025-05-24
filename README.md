@@ -21,7 +21,7 @@ All raw data can be found in the **Azure With/Without Content** and **Umbraco Wi
 
 ## Thesis
 
-The full written report (in Swedish) will be linked here once it is complete.
+You can find and read the full written report (in Swedish) [here](https://github.com/sannawiklund/K6ResultComparer/blob/main/K6ResultComparer/Examensarbete%20Sanna%20Wiklund.pdf).
 
 > _This project is part of my final examination and is based on real-world testing and comparison of two cloud hosting solutions for Umbraco._
 
